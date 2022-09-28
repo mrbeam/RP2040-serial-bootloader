@@ -16,6 +16,7 @@
 #include "hardware/resets.h"
 #include "hardware/uart.h"
 #include "hardware/watchdog.h"
+#include "bl_config.h"
 
 #ifdef DEBUG
 #include <stdio.h>
@@ -29,7 +30,7 @@
 
 // The bootloader can be entered in three ways:
 //  - BOOTLOADER_ENTRY_PIN is low
-//  - Watchdog scratch[5] == BOOTLOADER_ENTRY_PIN && scratch[6] == ~BOOTLOADER_ENTRY_MAGIC
+//  - Watchdog scratch[5] == BOOTLOADER_ENTRY_MAGIC && scratch[6] == ~BOOTLOADER_ENTRY_MAGIC
 //  - No valid image header
 // #define BOOTLOADER_ENTRY_PIN 15
 #define BOOTLOADER_ENTRY_MAGIC 0xb105f00d
@@ -694,28 +695,16 @@ int main(void)
 	uart_init(UART_ID, UART_BAUD);
 	uart_set_hw_flow(UART_ID, false, false);
     
-	sleep_ms(10);  // Bring UP Serial Lines
+	sleep_ms(10);  // waiting for Serial line to fully initialize
  
-    while (uart_is_readable(UART_ID))
-		{
-		uart_getc(UART_ID);
-		}; //clear Buffer
-    
-	//Wait loop
-    bool no_rec = true;
+    bool nothing_received = true;
+    uart_puts(UART_ID, BL_IDENTIFIER_STR);  //Header
 
-    uart_puts(UART_ID, "Boot\r\n");  //Header
-
-	//equates to waiting 1s - loop iterates for 10000 times with a wait time of 100us each pass.
-	for(int i = 0; i < 10000; i++){ 
-    	busy_wait_us(100);
-    	if (uart_is_readable(UART_ID)){     
-			no_rec = false;
-			break;
-		}
+	if(uart_is_readable_within_us(UART_ID,1000000)) {
+		nothing_received=false;
 	}
-
-	if (!should_stay_in_bootloader() && image_header_ok(hdr) && no_rec ) {
+	
+	if (!should_stay_in_bootloader() && image_header_ok(hdr) && nothing_received ) {
 		uint32_t vtor = *((uint32_t *)(XIP_BASE + IMAGE_HEADER_OFFSET));
 		disable_interrupts();
 		reset_peripherals();
@@ -728,8 +717,10 @@ int main(void)
 	uint8_t uart_buf[(sizeof(uint32_t) * (1 + MAX_NARG)) + MAX_DATA_LEN];
 	ctx.uart_buf = uart_buf;
 	enum state state = STATE_WAIT_FOR_SYNC;
+	watchdog_enable(BL_WD_TO_MAX_MS,1);
 
 	while (1) {
+		watchdog_update();
 		switch (state) {
 		case STATE_WAIT_FOR_SYNC:
 			DBG_PRINTF("wait_for_sync\n");
