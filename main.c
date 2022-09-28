@@ -35,11 +35,6 @@
 // #define BOOTLOADER_ENTRY_PIN 15
 #define BOOTLOADER_ENTRY_MAGIC 0xb105f00d
 
-#define UART_ID 	(uart0)
-#define UART_TX_PIN 0
-#define UART_RX_PIN 1
-#define UART_BAUD   (115200)
-
 #define CMD_SYNC   (('S' << 0) | ('Y' << 8) | ('N' << 16) | ('C' << 24))
 #define CMD_READ   (('R' << 0) | ('E' << 8) | ('A' << 16) | ('D' << 24))
 #define CMD_CSUM   (('C' << 0) | ('S' << 8) | ('U' << 16) | ('M' << 24))
@@ -700,7 +695,7 @@ int main(void)
     bool nothing_received = true;
     uart_puts(UART_ID, BL_IDENTIFIER_STR);  //Header
 
-	if(uart_is_readable_within_us(UART_ID,UART_READABLE_MAX_US)) {
+	if(uart_is_readable_within_us(UART_ID,UART_WAIT_FOR_TRIGGER_TOUT_US)) {
 		nothing_received=false;
 	}
 	
