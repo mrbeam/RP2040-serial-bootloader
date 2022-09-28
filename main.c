@@ -685,7 +685,7 @@ int main(void)
 
 	struct image_header *hdr = (struct image_header *)(XIP_BASE + IMAGE_HEADER_OFFSET);
     
-  gpio_set_function(UART_TX_PIN, GPIO_FUNC_UART);
+  	gpio_set_function(UART_TX_PIN, GPIO_FUNC_UART);
 	gpio_set_function(UART_RX_PIN, GPIO_FUNC_UART);
 	uart_init(UART_ID, UART_BAUD);
 	uart_set_hw_flow(UART_ID, false, false);
