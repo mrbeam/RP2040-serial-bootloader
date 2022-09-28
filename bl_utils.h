@@ -1,8 +1,8 @@
 #ifndef BL_UTILS_H_INCLUDED
 #define BL_UTILS_H_INCLUDED
 
-#define BL_WD_TO_MAX_MS         8000
-#define UART_READABLE_MAX_US    1000000
+#define BL_WD_TO_MAX_MS         (8000)
+#define UART_READABLE_MAX_US    (1000000)
 
 #define STR_INDIR(x) #x 
 #define STR(x) STR_INDIR(x)  
