@@ -714,7 +714,7 @@ int main(void)
 	uint8_t uart_buf[(sizeof(uint32_t) * (1 + MAX_NARG)) + MAX_DATA_LEN];
 	ctx.uart_buf = uart_buf;
 	enum state state = STATE_WAIT_FOR_SYNC;
-	watchdog_enable(BL_WD_TO_MAX_MS,1);
+	watchdog_enable(BL_WD_TOUT_MAX_MS,1);
 
 
 	while (1) {

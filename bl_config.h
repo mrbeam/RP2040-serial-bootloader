@@ -6,7 +6,7 @@
 #include "hardware/uart.h"
 
 // WATCHDOG
-#define BL_WD_TO_MAX_MS                     (8000)
+#define BL_WD_TOUT_MAX_MS                     (8000)
 
 // UART
 #define UART_ID 	                        (uart0)
