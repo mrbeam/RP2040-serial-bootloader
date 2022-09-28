@@ -690,7 +690,7 @@ int main(void)
 
 	struct image_header *hdr = (struct image_header *)(XIP_BASE + IMAGE_HEADER_OFFSET);
     
-    gpio_set_function(UART_TX_PIN, GPIO_FUNC_UART);
+  gpio_set_function(UART_TX_PIN, GPIO_FUNC_UART);
 	gpio_set_function(UART_RX_PIN, GPIO_FUNC_UART);
 	uart_init(UART_ID, UART_BAUD);
 	uart_set_hw_flow(UART_ID, false, false);
@@ -705,6 +705,7 @@ int main(void)
 	}
 	
 	if (!should_stay_in_bootloader() && image_header_ok(hdr) && nothing_received ) {
+
 		uint32_t vtor = *((uint32_t *)(XIP_BASE + IMAGE_HEADER_OFFSET));
 		disable_interrupts();
 		reset_peripherals();
@@ -713,11 +714,13 @@ int main(void)
 
 	DBG_PRINTF_INIT();
 
+
 	struct cmd_context ctx;
 	uint8_t uart_buf[(sizeof(uint32_t) * (1 + MAX_NARG)) + MAX_DATA_LEN];
 	ctx.uart_buf = uart_buf;
 	enum state state = STATE_WAIT_FOR_SYNC;
 	watchdog_enable(BL_WD_TO_MAX_MS,1);
+
 
 	while (1) {
 		watchdog_update();
