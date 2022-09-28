@@ -700,7 +700,7 @@ int main(void)
     bool nothing_received = true;
     uart_puts(UART_ID, BL_IDENTIFIER_STR);  //Header
 
-	if(uart_is_readable_within_us(UART_ID,1000000)) {
+	if(uart_is_readable_within_us(UART_ID,UART_READABLE_MAX_US)) {
 		nothing_received=false;
 	}
 	

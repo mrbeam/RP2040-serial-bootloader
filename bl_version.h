@@ -4,6 +4,6 @@
 #define VERSION_MAJOR       "00"
 #define VERSION_MINOR       "01"
 #define VERSION_PATCH       "00"
-#define VERSION_OTHERS      "feature"
+#define VERSION_OTHERS      ""
 
 #endif
