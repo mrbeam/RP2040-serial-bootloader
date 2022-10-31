@@ -690,10 +690,12 @@ int main(void)
 	uart_init(UART_ID, UART_BAUD);
 	uart_set_hw_flow(UART_ID, false, false);
     
-	sleep_ms(10);  // waiting for Serial line to fully initialize
- 
-    bool nothing_received = true;
+    uart_set_fifo_enabled(UART_ID,false);
+	bool nothing_received = true;
     uart_puts(UART_ID, BL_IDENTIFIER_STR);  //Header
+
+	sleep_ms(5);
+	uart_set_fifo_enabled(UART_ID,true)
 
 	if(uart_is_readable_within_us(UART_ID,UART_WAIT_FOR_TRIGGER_TOUT_US)) {
 		nothing_received=false;
