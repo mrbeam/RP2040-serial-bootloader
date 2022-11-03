@@ -2,7 +2,7 @@ POINTS TO NOTE:
 
 * bootloader.ld
 
--> FLASH(rx) : ORIGIN = 0x10000000, LENGTH = 12k //maintain the length as multiple of 4k
+-> FLASH(rx) : ORIGIN = 0x10000000, LENGTH = 32k //maintain the length as multiple of 4k
 -> Make similar changes in the other .ld files and CMakeLists.txt file
     combined.ld
     standalone.ld
@@ -13,7 +13,7 @@ Refer the branch - https://github.com/usedbytes/rp2040-serial-bootloader/tree/bl
 
 * main.c
 
--> #define IMAGE_HEADER_OFFSET (12 * 1024) //Should be the same as the FLASH LENGTH
+-> #define IMAGE_HEADER_OFFSET (32 * 1024) //Should be the same as the FLASH LENGTH
 variable in the bootloader.ld file
 
 -> #define UART_BAUD   (115200) //when using different baud rates make sure to recompile the 
