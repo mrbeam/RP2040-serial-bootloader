@@ -21,7 +21,7 @@
     __stack (== StackTop)
 */
 
-/* Limit flash to 12k, so we can use 12-16k for the image header */
+/* Limit flash to 32k, so we can use 32-36k for the image header */
 MEMORY
 {
     FLASH(rx) : ORIGIN = 0x10000000, LENGTH = 32k
