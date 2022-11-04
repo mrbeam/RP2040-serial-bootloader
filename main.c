@@ -691,7 +691,6 @@ static void jump_to_app(struct image_header *hdr)
 int64_t alarm_callback(alarm_id_t id, void *user_data) {
     printf("Timer %d fired!\n", (int) id);
 	jump_to_app((struct image_header *)user_data);
-    // Can return a value here in us to fire in the future
     return 0;
 }
 
