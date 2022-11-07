@@ -689,7 +689,7 @@ static void jump_to_app(struct image_header *hdr)
 }
 
 int64_t alarm_callback(alarm_id_t id, void *user_data) {
-    printf("Timer %d fired!\n", (int) id);
+	DBG_PRINTF("Timer %d fired!\n", (int) id);
 	jump_to_app((struct image_header *)user_data);
     return 0;
 }
@@ -737,6 +737,9 @@ int main(void)
 		switch (state) {
 		case STATE_WAIT_FOR_SYNC:
 			// start alarm for 100ms
+			#ifdef DEBUG
+			sleep_ms(1000);
+			#endif
 			add_alarm_in_ms(100, alarm_callback, (void *)hdr, false);
 			DBG_PRINTF("wait_for_sync\n");
 			state = state_wait_for_sync(&ctx);
