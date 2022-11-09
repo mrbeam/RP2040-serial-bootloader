@@ -691,6 +691,7 @@ static void jump_to_app(struct image_header *hdr)
 int64_t alarm_callback(alarm_id_t id, void *user_data) {
 	DBG_PRINTF("Timer %d fired!\n", (int) id);
 	jump_to_app((struct image_header *)user_data);
+	DBG_PRINTF("wait_for_sync\n");
     return 0;
 }
 
@@ -731,17 +732,18 @@ int main(void)
 	enum state state = STATE_WAIT_FOR_SYNC;
 	watchdog_enable(BL_WD_TOUT_MAX_MS,1);
 
-
 	while (1) {
 		watchdog_update();
+		
 		switch (state) {
 		case STATE_WAIT_FOR_SYNC:
-			// start alarm for 100ms
+			// start alarm for 100ms and 2000ms for DEBUG
 			#ifdef DEBUG
-			sleep_ms(1000);
-			#endif
+			add_alarm_in_ms(2000, alarm_callback, (void *)hdr, false);
+			#else
 			add_alarm_in_ms(100, alarm_callback, (void *)hdr, false);
-			DBG_PRINTF("wait_for_sync\n");
+			#endif
+			DBG_PRINTF("wait_for_sync\n");	
 			state = state_wait_for_sync(&ctx);
 			DBG_PRINTF("wait_for_sync done\n");
 			break;
