@@ -50,7 +50,7 @@
 #define RSP_OK   (('O' << 0) | ('K' << 8) | ('O' << 16) | ('K' << 24))
 #define RSP_ERR  (('E' << 0) | ('R' << 8) | ('R' << 16) | ('!' << 24))
 
-#define IMAGE_HEADER_OFFSET (12 * 1024)
+#define IMAGE_HEADER_OFFSET (32 * 1024)
 
 #define WRITE_ADDR_MIN (XIP_BASE + IMAGE_HEADER_OFFSET + FLASH_SECTOR_SIZE)
 #define ERASE_ADDR_MIN (XIP_BASE + IMAGE_HEADER_OFFSET)
@@ -677,6 +677,25 @@ static bool should_stay_in_bootloader()
 	return  wd_says_so;
 }
 
+static void jump_to_app(struct image_header *hdr)
+{
+	if (!should_stay_in_bootloader() && image_header_ok(hdr)) {
+
+		uint32_t vtor = *((uint32_t *)(XIP_BASE + IMAGE_HEADER_OFFSET));
+		disable_interrupts();
+		reset_peripherals();
+		jump_to_vtor(vtor);
+	}
+}
+
+int64_t alarm_callback(alarm_id_t id, void *user_data) {
+	DBG_PRINTF("Timer %d fired!\n", (int) id);
+	jump_to_app((struct image_header *)user_data);
+	DBG_PRINTF("wait_for_sync\n");
+    return 0;
+}
+
+
 int main(void)
 {
 	gpio_init(PICO_DEFAULT_LED_PIN);
@@ -690,21 +709,18 @@ int main(void)
 	uart_init(UART_ID, UART_BAUD);
 	uart_set_hw_flow(UART_ID, false, false);
     
-	sleep_ms(10);  // waiting for Serial line to fully initialize
- 
-    bool nothing_received = true;
+	bool nothing_received = true;
     uart_puts(UART_ID, BL_IDENTIFIER_STR);  //Header
+
+	sleep_ms(5);
 
 	if(uart_is_readable_within_us(UART_ID,UART_WAIT_FOR_TRIGGER_TOUT_US)) {
 		nothing_received=false;
 	}
 	
-	if (!should_stay_in_bootloader() && image_header_ok(hdr) && nothing_received ) {
-
-		uint32_t vtor = *((uint32_t *)(XIP_BASE + IMAGE_HEADER_OFFSET));
-		disable_interrupts();
-		reset_peripherals();
-		jump_to_vtor(vtor);
+	if(nothing_received)
+	{
+		jump_to_app(hdr);
 	}
 
 	DBG_PRINTF_INIT();
@@ -716,12 +732,18 @@ int main(void)
 	enum state state = STATE_WAIT_FOR_SYNC;
 	watchdog_enable(BL_WD_TOUT_MAX_MS,1);
 
-
 	while (1) {
 		watchdog_update();
+		
 		switch (state) {
 		case STATE_WAIT_FOR_SYNC:
-			DBG_PRINTF("wait_for_sync\n");
+			// start alarm for 100ms and 2000ms for DEBUG
+			#ifdef DEBUG
+			add_alarm_in_ms(2000, alarm_callback, (void *)hdr, false);
+			#else
+			add_alarm_in_ms(100, alarm_callback, (void *)hdr, false);
+			#endif
+			DBG_PRINTF("wait_for_sync\n");	
 			state = state_wait_for_sync(&ctx);
 			DBG_PRINTF("wait_for_sync done\n");
 			break;

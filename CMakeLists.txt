@@ -60,6 +60,7 @@ target_link_libraries(bootloader
                       hardware_flash
                       hardware_structs
                       hardware_resets
+					  pico_stdio_usb
                       cmsis_core)
 
 set(BOOTLOADER_DIR "${CMAKE_CURRENT_LIST_DIR}" CACHE INTERNAL "")
@@ -130,3 +131,9 @@ function(bootloader_build_standalone NAME)
 	pico_set_linker_script(${NAME} ${BOOTLOADER_DIR}/standalone.ld)
 	pico_add_bin_output(${NAME})
 endfunction()
+
+# Add debugging option
+option(USE_DEBUG "Enter debug mode" OFF)
+if (USE_DEBUG)
+add_compile_definitions(DEBUG)
+endif()
