@@ -12,7 +12,7 @@
 #define UART_ID 	                        (uart0)
 #define UART_TX_PIN                         0
 #define UART_RX_PIN                         1
-#define UART_BAUD                           (115200)
+#define UART_BAUD                           (250000)
 #define UART_WAIT_FOR_TRIGGER_TOUT_US       (1000000)
 
 #define BL_IDENTIFIER_STR "BL" "##" BL_VERSION "##" STR(BL_WD_TOUT_MAX_MS) "##"
