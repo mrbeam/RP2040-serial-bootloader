@@ -24,18 +24,42 @@
 
 cmake_minimum_required(VERSION 3.13)
 
-include(pico_sdk_import.cmake)
-
-project(test_project C CXX ASM)
+if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
+    include(pico_sdk_import.cmake)
+    project(serial_bootloader C CXX ASM)
+    pico_sdk_init()
+endif()
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
 
-pico_sdk_init()
 
 # Build the bootloader as a standalone thing
 
+set(BOOTLOADER_VERSION_OVERRIDE "" CACHE STRING "Explicit vMAJOR.MINOR.PATCH bootloader version for source archives")
+set(BOOTLOADER_VERSION_HEADER "${CMAKE_CURRENT_BINARY_DIR}/bl_version_generated.h")
+find_package(Python3 REQUIRED COMPONENTS Interpreter)
+set(BOOTLOADER_VERSION_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_version.py")
+set(BOOTLOADER_VERSION_ARGS
+    --source-dir "${CMAKE_CURRENT_SOURCE_DIR}"
+    --output "${BOOTLOADER_VERSION_HEADER}")
+if(NOT BOOTLOADER_VERSION_OVERRIDE STREQUAL "")
+    list(APPEND BOOTLOADER_VERSION_ARGS --version-override "${BOOTLOADER_VERSION_OVERRIDE}")
+endif()
+execute_process(COMMAND ${Python3_EXECUTABLE} "${BOOTLOADER_VERSION_SCRIPT}" ${BOOTLOADER_VERSION_ARGS}
+    RESULT_VARIABLE BOOTLOADER_VERSION_RESULT)
+if(NOT BOOTLOADER_VERSION_RESULT EQUAL 0)
+    message(FATAL_ERROR "Failed to generate bootloader version")
+endif()
+add_custom_target(bootloader_version
+    COMMAND ${Python3_EXECUTABLE} "${BOOTLOADER_VERSION_SCRIPT}" ${BOOTLOADER_VERSION_ARGS}
+    DEPENDS "${BOOTLOADER_VERSION_SCRIPT}"
+    BYPRODUCTS "${BOOTLOADER_VERSION_HEADER}" VERBATIM)
+
 add_executable(bootloader main.c)
+add_dependencies(bootloader bootloader_version)
+target_include_directories(bootloader PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
+
 
 function(target_cl_options option)
     target_compile_options(bootloader PRIVATE ${option})
@@ -52,7 +76,7 @@ pico_set_binary_type(bootloader copy_to_ram)
 
 set_target_properties(bootloader PROPERTIES COMPILE_FLAGS "-Wall")
 
-pico_set_linker_script(bootloader ${CMAKE_CURRENT_SOURCE_DIR}/bootloader.ld)
+pico_set_linker_script(bootloader ${CMAKE_CURRENT_LIST_DIR}/bootloader.ld)
 
 target_link_libraries(bootloader
                       pico_stdlib
@@ -79,6 +103,8 @@ function(bootloader_define_library)
 	add_custom_target(${NAME}_bin_asm DEPENDS ${BIN_ASM})
 	add_custom_command(OUTPUT ${BIN_ASM} DEPENDS ${ORIGINAL_BIN}
 		COMMAND ${Python3_EXECUTABLE} ${BOOTLOADER_DIR}/mkasm.py ${ORIGINAL_BIN} ${BIN_ASM}
+        DEPENDS ${BOOTLOADER_DIR}/mkasm.py
+        VERBATIM
 	)
 
 	add_library(${NAME}_library INTERFACE)
@@ -92,37 +118,38 @@ bootloader_define_library()
 # Provide a helper to build a combined target
 
 function(bootloader_build_combined NAME)
+    find_package(Python3 REQUIRED COMPONENTS Interpreter)
 	set(APP ${NAME}_app)
 	set(APP_BIN ${CMAKE_CURRENT_BINARY_DIR}/${APP}.bin)
 	set(APP_HDR ${CMAKE_CURRENT_BINARY_DIR}/${APP}_hdr.bin)
 
 	set(COMBINED ${NAME}_combined)
 
-	target_link_libraries(${NAME} bootloader_library)
+	target_link_libraries(${NAME} PRIVATE bootloader_library)
 
 	pico_set_linker_script(${NAME} ${BOOTLOADER_DIR}/combined.ld)
 
 	pico_add_bin_output(${NAME})
 
-	# TODO: The hard-coded 16k here is a bit nasty
-	add_custom_target(${APP}_bin DEPENDS ${APP_BIN})
-	add_custom_command(OUTPUT ${APP_BIN} DEPENDS ${NAME}.bin
-		COMMAND dd ibs=1k iseek=36 if=${NAME}.bin of=${APP_BIN}
-	)
+    # The linkers reserve 32 KiB for the bootloader and 4 KiB for its header.
+    add_custom_command(OUTPUT ${APP_BIN}
+        COMMAND dd bs=1024 skip=36 if=${NAME}.bin of=${APP_BIN}
+        DEPENDS ${NAME} ${CMAKE_CURRENT_BINARY_DIR}/${NAME}.bin VERBATIM)
+    add_custom_command(OUTPUT ${APP_HDR}
+        COMMAND ${Python3_EXECUTABLE} ${BOOTLOADER_DIR}/gen_imghdr.py
+            -a 0x10009000 ${APP_BIN} ${APP_HDR}
+        DEPENDS ${APP_BIN} ${BOOTLOADER_DIR}/gen_imghdr.py VERBATIM)
+    # Convert only the ELF with the final CRC header, never the placeholder ELF.
+    pico_init_picotool()
+    add_custom_command(OUTPUT ${COMBINED}.elf ${COMBINED}.bin ${COMBINED}.uf2
+        COMMAND ${CMAKE_OBJCOPY} --update-section .app_hdr=${APP_HDR}
+            $<TARGET_FILE:${NAME}> ${COMBINED}.elf
+        COMMAND ${CMAKE_OBJCOPY} -Obinary ${COMBINED}.elf ${COMBINED}.bin
+        COMMAND picotool uf2 convert ${COMBINED}.elf ${COMBINED}.uf2 --family rp2040
+        DEPENDS ${NAME} ${APP_HDR} picotool VERBATIM)
+    add_custom_target(${COMBINED} ALL
+        DEPENDS ${COMBINED}.elf ${COMBINED}.bin ${COMBINED}.uf2)
 
-	# TODO: The hard-coded address here is a bit nasty
-	add_custom_target(${APP}_hdr DEPENDS ${APP}_bin)
-	add_custom_command(OUTPUT ${APP_HDR} DEPENDS ${APP_BIN}
-		COMMAND ${BOOTLOADER_DIR}/gen_imghdr.py -a 0x10009000 ${APP_BIN} ${APP_HDR}
-	)
-
-	add_custom_target(${COMBINED} ALL DEPENDS ${APP_HDR})
-	add_custom_command(TARGET ${COMBINED} DEPENDS ${APP_HDR}
-		COMMAND ${CMAKE_OBJCOPY} --update-section .app_hdr=${APP_HDR} ${NAME}.elf ${COMBINED}.elf
-	)
-	add_custom_command(TARGET ${COMBINED} POST_BUILD
-		COMMAND ${CMAKE_OBJCOPY} -Obinary ${COMBINED}.elf ${COMBINED}.bin
-	)
 endfunction()
 
 # Provide a helper to build a standalone target
