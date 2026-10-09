@@ -72,6 +72,16 @@ target_cl_options("-fdata-sections")
 target_link_options(bootloader PRIVATE "LINKER:--gc-sections")
 
 pico_add_extra_outputs(bootloader)
+# Publish the standalone image in the top-level build directory. Read the
+# generated header after compilation so the filename matches the binary version.
+add_custom_target(bootloader_release_uf2 ALL
+    COMMAND ${Python3_EXECUTABLE} "${CMAKE_CURRENT_SOURCE_DIR}/tools/publish_uf2.py"
+        --header "${BOOTLOADER_VERSION_HEADER}"
+        --uf2 "${CMAKE_CURRENT_BINARY_DIR}/bootloader.uf2"
+        --output-dir "${CMAKE_BINARY_DIR}"
+    DEPENDS bootloader "${CMAKE_CURRENT_SOURCE_DIR}/tools/publish_uf2.py"
+    VERBATIM)
+
 pico_set_binary_type(bootloader copy_to_ram)
 
 set_target_properties(bootloader PROPERTIES COMPILE_FLAGS "-Wall")
